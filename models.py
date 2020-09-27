@@ -218,11 +218,13 @@ def init_STRFNet(sample_batch,
                  residual_channels=[32, 32],
                  embedding_dimension=1024,
                  frame_rate=None, bins_per_octave=None,
-                 time_support=None, octave_support=None,
+                 time_support=None, frequency_support=None,
                  conv2d_sizes=(3, 3),
                  mlp_hiddims=[],
                  ):
     """Initialize a STRFNet for multi-class classification.
+
+    This is a one-stop solution to create STRFNet and its variants.
 
     Parameters
     ----------
@@ -250,8 +252,11 @@ def init_STRFNet(sample_batch,
     time_support: float, None
         Number of seconds spanned by each STRF kernel.
         No STRF kernels by default.
-    octave_support: float, None
-        Number of octaves spanned by each STRF kernel.
+    frequency_support: int/float, None
+        If frame_rate or bins_per_octave is None, interpret as GaborSTRFConv.
+            - Number of frequency bins (int) spanned by each STRF kernel.
+        Otherwise, interpret as STRFConv.
+            - Number of octaves spanned by each STRF kernel.
         No STRF kernels by default.
     conv2d_sizes: (int, int), (3, 3)
         nn.Conv2d kernel dimensions.
@@ -259,22 +264,39 @@ def init_STRFNet(sample_batch,
         Final MLP hidden layer dimensions.
         Default has no hidden layers.
     """
-    is_strfnet = all(p is not None for p in (frame_rate, bins_per_octave,
-                                             time_support, octave_support))
+    if all(p is not None for p in (time_support, frequency_support)):
+        is_strfnet = True
+        if all(p is not None for p in (frame_rate, bins_per_octave)):
+            kernel_type = 'wavelet'
+        else:
+            assert all(
+                type(p) is int for p in (time_support, frequency_support)
+            )
+            kernel_type = 'gabor'
+    else:
+        is_strfnet = False
     is_cnn = conv2d_sizes is not None
     is_hybrid = is_strfnet and is_cnn
     if is_hybrid:
-        print("Preparing for Hybrid STRFNet.")
+        print(f"Preparing for Hybrid STRFNet; kernel type is {kernel_type}.")
     elif is_strfnet:
-        print("Preparing for STRFNet.")
+        print(f"Preparing for STRFNet; kernel type is {kernel_type}.")
     elif is_cnn:
         print("Preparing for CNN.")
     else:
         raise ValueError("Insufficient parameters. Check example_STRFNet.")
 
-    strf_layer = STRFConv(
-        frame_rate, bins_per_octave, time_support, octave_support, num_kernels
-    ) if is_strfnet else None
+    if not is_strfnet:
+        strf_layer = None
+    elif kernel_type == 'wavelet':
+        strf_layer = STRFConv(
+            frame_rate, bins_per_octave,
+            time_support, frequency_support, num_kernels
+        )
+    else:
+        strf_layer = GaborSTRFConv(
+            time_support, frequency_support, num_kernels
+        )
 
     if is_cnn:
         d1, d2 = conv2d_sizes
@@ -469,7 +491,8 @@ if __name__ == "__main__":
     print(device)
     net = init_STRFNet(
         torch.rand(32, 64, 257), 2,
-        time_support=.5, octave_support=2, frame_rate=100, bins_per_octave=12,
+        time_support=10, frequency_support=2,
+        #frame_rate=100, bins_per_octave=12,
         conv2d_sizes=None
     ).to(device)
     print(net)
@@ -477,7 +500,3 @@ if __name__ == "__main__":
     loss = res.sum()
     loss.backward()
     print("Okay.")
-
-    # Test GaborSTRFConv
-    gabors = GaborSTRFConv(20, 20, 5).to(device)
-    res = gabors(torch.rand(100, 40).to(device))
