@@ -217,6 +217,7 @@ def init_STRFNet(sample_batch,
                  num_kernels=32,
                  residual_channels=[32, 32],
                  embedding_dimension=1024,
+                 num_rnn_layers=2,
                  frame_rate=None, bins_per_octave=None,
                  time_support=None, frequency_support=None,
                  conv2d_sizes=(3, 3),
@@ -324,7 +325,7 @@ def init_STRFNet(sample_batch,
     linear_layer = nn.Linear(flattened_dimension, embedding_dimension)
     rnn = nn.GRU(
         embedding_dimension, embedding_dimension, batch_first=True,
-        num_layers=2, bidirectional=True
+        num_layers=num_rnn_layers, bidirectional=True
     )
 
     mlp = MLP(
