@@ -2,17 +2,18 @@
 Official repo for the STRFNet system appeared in INTERSPEECH2020
 
 
-[Paper](http://www.interspeech2020.org/index.php?m=content&c=index&a=show&catid=311&id=712)
+[Paper](https://www.isca-speech.org/archive/Interspeech_2020/pdfs/1878.pdf)
 
 ### Citation
 ```
-@inproceedings{vuong2020learnable,
-      title={Learnable Spectro-temporal Receptive Fields for Robust Voice Type Discrimination}, 
-      author={Tyler Vuong and Yangyang Xia and Richard M. Stern},
-      year={2020},
-      month = oct,
-      booktitle = {Interspeech 2020}
-     
-}
+@inproceedings{VuongSTRFNet2020,
+  author={Tyler Vuong and Yangyang Xia and Richard M. Stern},
+  title={{Learnable Spectro-Temporal Receptive Fields for Robust Voice Type Discrimination}},
+  year=2020,
+  booktitle={Proc. Interspeech 2020},
+  pages={1957--1961},
+  doi={10.21437/Interspeech.2020-1878},
+  url={http://dx.doi.org/10.21437/Interspeech.2020-1878}
+}     
 
 ```
