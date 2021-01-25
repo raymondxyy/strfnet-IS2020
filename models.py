@@ -220,6 +220,7 @@ def init_STRFNet(sample_batch,
                  time_support=None, frequency_support=None,
                  conv2d_sizes=(3, 3),
                  mlp_hiddims=[],
+                 activate_out=nn.LogSoftmax(dim=1)
                  ):
     """Initialize a STRFNet for multi-class classification.
 
@@ -262,6 +263,9 @@ def init_STRFNet(sample_batch,
     mlp_hiddims: list(int), []
         Final MLP hidden layer dimensions.
         Default has no hidden layers.
+    activate_out: callable, nn.LogSoftmax(dim=1)
+        Activation function at the final layer.
+        Default uses LogSoftmax for multi-class classification.
     """
     if all(p is not None for p in (time_support, frequency_support)):
         is_strfnet = True
@@ -329,7 +333,7 @@ def init_STRFNet(sample_batch,
     mlp = MLP(
         2*embedding_dimension, num_classes, hiddims=mlp_hiddims,
         activate_hid=nn.LeakyReLU(),
-        activate_out=nn.LogSoftmax(dim=1),
+        activate_out=activate_out,
         batchnorm=[True]*len(mlp_hiddims)
     )
 
