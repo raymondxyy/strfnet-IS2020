@@ -5,9 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from audlib.nn.nn import MLP
-from audlib.nn.signal import hilbert
-from audlib.sig.util import nextpow2
+from utils import MLP, hilbert, nextpow2
 
 
 def is_strf_param(nm):
