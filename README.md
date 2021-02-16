@@ -4,8 +4,8 @@ Learnable Spectro-Temporal Receptive Fields for Robust Voice Type Discrimination
 Official repo for the STRFNet system appeared in INTERSPEECH2020
 
 
-[Paper](https://www.isca-speech.org/archive/Interspeech_2020/pdfs/1878.pdf)\
-[Arxiv](https://arxiv.org/abs/2010.09151)
+[[Paper](https://www.isca-speech.org/archive/Interspeech_2020/pdfs/1878.pdf)]\
+[[Arxiv](https://arxiv.org/abs/2010.09151)]
 
 ### Citation
 ```
