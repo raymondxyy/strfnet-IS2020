@@ -1,4 +1,6 @@
 # strfnet-IS2020
+Learnable Spectro-Temporal Receptive Fields for Robust Voice Type Discrimination
+
 Official repo for the STRFNet system appeared in INTERSPEECH2020
 
 
