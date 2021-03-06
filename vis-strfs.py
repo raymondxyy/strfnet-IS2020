@@ -3,6 +3,27 @@ import numpy as np
 import scipy.signal as signal
 
 
+class HilbertTransformer(object):
+    def __init__(self, method='frequency_sampling', ndft=None):
+        if method == 'frequency_sampling':
+            def hilbert(sig):
+                return signal.hilbert(sig, ndft)[:len(sig)]
+            self._fn = hilbert
+        elif method == 'pm':
+            ht = signal.remez(
+                201, [0.01, 0.99], [1], type='hilbert', fs=2
+            )
+            def hilbert(sig):
+                sig_imag = np.convolve(sig, ht)[100:-100]
+                return sig + 1j*sig_imag
+            self._fn = hilbert
+        else:
+            raise NotImplementedError
+
+    def __call__(self, sig):
+        return self._fn(sig)
+
+
 def strf(time, freq, sr, bins_per_octave, rate=1, scale=1, phi=0, theta=0,
          ndft=None):
     """Spectral-temporal response fields for both up and down direction.
@@ -57,12 +78,17 @@ def strf(time, freq, sr, bins_per_octave, rate=1, scale=1, phi=0, theta=0,
         ndft = max(512, nextpow2(max(len(hs), len(ht))))
         ndft = max(len(hs), len(ht))
     assert ndft >= max(len(ht), len(hs))
-    hsa = signal.hilbert(hs, ndft)[:len(hs)]
-    hta = signal.hilbert(ht, ndft)[:len(ht)]
+    hilb = HilbertTransformer(method='pm')
+    hsa = hilb(hs)
+    hta = hilb(ht)
+    #hsa = signal.hilbert(hs, ndft)[:len(hs)]
+    #hta = signal.hilbert(ht, ndft)[:len(ht)]
     hirs = hs * np.cos(phi) + hsa.imag * np.sin(phi)
     hirt = ht * np.cos(theta) + hta.imag * np.sin(theta)
-    hirs_ = signal.hilbert(hirs, ndft)[:len(hs)]
-    hirt_ = signal.hilbert(hirt, ndft)[:len(ht)]
+    hirs_ = hilb(hirs)
+    hirt_ = hilb(hirt)
+    #hirs_ = signal.hilbert(hirs, ndft)[:len(hs)]
+    #hirt_ = signal.hilbert(hirt, ndft)[:len(ht)]
     return np.outer(hirt_, hirs_).real,\
         np.outer(np.conj(hirt_), hirs_).real
 

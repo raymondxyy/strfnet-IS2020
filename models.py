@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils import MLP, hilbert, nextpow2
+from utils import MLP, hilbert, nextpow2, HilbertTranformer
 
 
 def is_strf_param(nm):
@@ -81,7 +81,8 @@ class GaborSTRFConv(nn.Module):
 class STRFConv(nn.Module):
     """Spectrotemporal receptive field (STRF)-based convolution."""
     def __init__(self, fr, bins_per_octave, suptime, supoct, nkern,
-                 rates=None, scales=None, phis=None, thetas=None):
+                 rates=None, scales=None, phis=None, thetas=None,
+                 hilbert_method='pm'):
         """Instantiate a STRF convolution layer.
 
         Parameters
@@ -129,7 +130,6 @@ class STRFConv(nn.Module):
             _tsteps += 1
         self.supt = torch.arange(_tsteps).type_as(self.supf)/fr
         self.padding = (_tsteps//2, _fsteps)
-        self.ndft = max(nextpow2(max(len(self.supf), len(self.supt))), 128)
 
         # Set up learnable parameters
         for param in (rates, scales, phis, thetas):
@@ -146,6 +146,11 @@ class STRFConv(nn.Module):
         self.scales_ = nn.Parameter(torch.Tensor(scales))
         self.phis_ = nn.Parameter(torch.Tensor(phis))
         self.thetas_ = nn.Parameter(torch.Tensor(thetas))
+        self.hilbert = HilbertTranformer(
+            hilbert_method,
+            max(nextpow2(max(len(self.supf), len(self.supt))), 128)
+            if hilbert_method == 'frequency-sampling' else None
+        )
 
     @staticmethod
     def _hs(x, scale):
@@ -168,20 +173,20 @@ class STRFConv(nn.Module):
         # Construct STRFs
         hs = self._hs(self.supf, self.scales_.view(K, 1))
         ht = self._ht(self.supt, self.rates_.view(K, 1))
-        hsa = hilbert(hs, self.ndft)[:, :hs.size(-1), :]
-        hta = hilbert(ht, self.ndft)[:, :ht.size(-1), :]
+        hs_hilb = self.hilbert(hs)
+        ht_hilb = self.hilbert(ht)
         hirs = hs * torch.cos(self.phis_.view(K, 1)) \
-            + hsa[..., 1] * torch.sin(self.phis_.view(K, 1))
+            + hs_hilb * torch.sin(self.phis_.view(K, 1))
         hirt = ht * torch.cos(self.thetas_.view(K, 1)) \
-            + hta[..., 1] * torch.sin(self.thetas_.view(K, 1))
-        hirs_ = hilbert(hirs, self.ndft)[:, :hs.size(-1), :]  # K x S x 2
-        hirt_ = hilbert(hirt, self.ndft)[:, :ht.size(-1), :]  # K x T x 2
+            + ht_hilb * torch.sin(self.thetas_.view(K, 1))
+        hirs_hilb = self.hilbert(hirs)
+        hirt_hilb = self.hilbert(hirt)
 
         # for a single strf:
         # strfdn = hirt_[:, 0] * hirs_[:, 0] - hirt_[:, 1] * hirs_[:, 1]
         # strfup = hirt_[:, 0] * hirs_[:, 0] + hirt_[:, 1] * hirs_[:, 1]
-        rreal = hirt_[..., 0].view(K, T, 1) * hirs_[..., 0].view(K, 1, S)
-        rimag = hirt_[..., 1].view(K, T, 1) * hirs_[..., 1].view(K, 1, S)
+        rreal = hirt.view(K, T, 1) * hirs.view(K, 1, S)
+        rimag = hirt_hilb.view(K, T, 1) * hirs_hilb.view(K, 1, S)
         strfs = torch.cat((rreal-rimag, rreal+rimag), 0)  # 2K x T x S
 
         return strfs
@@ -494,8 +499,8 @@ if __name__ == "__main__":
     print(device)
     net = init_STRFNet(
         torch.rand(32, 64, 257), 2,
-        time_support=10, frequency_support=2,
-        #frame_rate=100, bins_per_octave=12,
+        time_support=0.5, frequency_support=2,
+        frame_rate=100, bins_per_octave=12,
         conv2d_sizes=None
     ).to(device)
     print(net)
